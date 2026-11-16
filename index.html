@@ -1,0 +1,980 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0c9a89">
+<meta name="description" content="Journal de présence scellé — sécurité perso et tranquillité d'esprit.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Témoin">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Témoin</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+  /* Layout : prototype mobile à 3 écrans (Journée / Export / Réglages) + barre de nav basse. Données d'exemple. */
+  :root {
+    --bg: #eef3f3; --surface: #ffffff; --surface-2: #f1f6f6;
+    --fg: #121a1b; --fg-soft: #51636a; --line: #dde6e6;
+    --accent: #0c9a89; --accent-ink: #ffffff; --accent-soft: #d7f1ec;
+    --live: #18b86a; --gold: #b5791a; --danger: #c23b3b; --danger-soft: #f7dede;
+    --shadow: 0 1px 2px rgba(18,26,27,.04), 0 8px 26px rgba(18,26,27,.07);
+    --navh: 62px;
+    --font-head: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+    --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+    --maxw: 460px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #080d0e; --surface: #121a1b; --surface-2: #192324;
+      --fg: #e9f1f1; --fg-soft: #94a7aa; --line: #243233;
+      --accent: #2bc3ae; --accent-ink: #04100e; --accent-soft: #10302b;
+      --live: #2bd47f; --gold: #e0a94a; --danger: #f06a6a; --danger-soft: #2e1414;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 32px rgba(0,0,0,.5);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #080d0e; --surface: #121a1b; --surface-2: #192324;
+    --fg: #e9f1f1; --fg-soft: #94a7aa; --line: #243233;
+    --accent: #2bc3ae; --accent-ink: #04100e; --accent-soft: #10302b;
+    --live: #2bd47f; --gold: #e0a94a; --danger: #f06a6a; --danger-soft: #2e1414;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 32px rgba(0,0,0,.5);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font-body); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  h1, h2, .big { font-family: var(--font-head); letter-spacing: -.01em; }
+  .wrap {
+    max-width: var(--maxw); margin: 0 auto;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-top: 22px;
+    padding-bottom: calc(var(--navh) + env(safe-area-inset-bottom, 0px) + 26px);
+  }
+  .demo { font-size: .76rem; text-align: center; color: var(--fg-soft); background: var(--surface-2); border: 1px dashed var(--line); border-radius: 10px; padding: 7px 10px; margin-bottom: 16px; }
+  .demo b { font-family: var(--font-head); color: var(--fg); }
+
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+  .brand { display: flex; align-items: center; gap: 9px; font-family: var(--font-head); font-weight: 700; font-size: 1.15rem; }
+  .brand .logo { width: 30px; height: 30px; border-radius: 9px; background: var(--accent); display: flex; align-items: center; justify-content: center; }
+  .brand .logo svg { width: 17px; height: 17px; stroke: var(--accent-ink); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .status { display: inline-flex; align-items: center; gap: 7px; font-size: .78rem; font-weight: 600; color: var(--live); background: color-mix(in srgb, var(--live) 14%, transparent); padding: 6px 11px; border-radius: 999px; }
+  .status.off { color: var(--fg-soft); background: var(--surface-2); }
+  .dot-live { width: 8px; height: 8px; border-radius: 50%; background: var(--live); animation: pulse 2s infinite; }
+  .status.off .dot-live { background: var(--fg-soft); animation: none; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--live) 55%, transparent); } 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+  @media (prefers-reduced-motion: reduce) { .dot-live { animation: none; } }
+
+  .panel { display: flex; flex-direction: column; }
+  .panel[hidden] { display: none; }
+  .panel-title { font-size: 1.5rem; font-weight: 700; margin: 0 0 16px; }
+
+  .datebar { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 18px; }
+  .datebar button { background: var(--surface); border: 1px solid var(--line); color: var(--fg-soft); width: 34px; height: 34px; border-radius: 10px; cursor: pointer; font-size: 1rem; box-shadow: var(--shadow); }
+  .datebar .dstr { font-family: var(--font-head); font-weight: 600; font-size: 1.05rem; text-transform: capitalize; }
+
+  .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 22px; }
+  .sum { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; box-shadow: var(--shadow); }
+  .sum .v { font-family: var(--font-head); font-weight: 700; font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+  .sum .k { font-size: .7rem; color: var(--fg-soft); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; margin-top: 3px; }
+
+  .timeline { position: relative; padding-left: 30px; display: flex; flex-direction: column; gap: 14px; }
+  .timeline::before { content: ""; position: absolute; left: 9px; top: 6px; bottom: 6px; width: 2px; background: var(--line); }
+  .ev { position: relative; }
+  .ev::before { content: ""; position: absolute; left: -29px; top: 20px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); border: 3px solid var(--bg); }
+  .ev.now::before { background: var(--live); }
+  .ev-card { width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 15px; padding: 13px 14px; box-shadow: var(--shadow); cursor: pointer; display: block; color: inherit; font: inherit; }
+  .ev-top { display: flex; align-items: center; gap: 11px; }
+  .ev-ico { flex: 0 0 auto; width: 38px; height: 38px; border-radius: 11px; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; }
+  .ev-ico svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .ev-main { flex: 1; min-width: 0; }
+  .ev-title { font-family: var(--font-head); font-weight: 600; font-size: 1rem; }
+  .ev-sub { font-size: .82rem; color: var(--fg-soft); }
+  .ev-right { flex: 0 0 auto; text-align: right; }
+  .ev-time { font-family: var(--font-head); font-weight: 600; font-size: .84rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ev-dur { font-size: .72rem; color: var(--fg-soft); margin-top: 2px; }
+  .seal { display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; font-size: .72rem; font-weight: 600; color: var(--accent); }
+  .seal svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .ev.now .seal { color: var(--live); }
+  .ev-detail { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); font-size: .82rem; color: var(--fg-soft); }
+  .ev.open .ev-detail { display: block; }
+  .ev-detail .row { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; }
+  .ev-detail .row b { color: var(--fg); font-family: var(--font-head); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .ev-detail .hash { word-break: break-all; font-family: ui-monospace, monospace; font-size: .76rem; }
+  .thumb { margin-top: 10px; height: 92px; border-radius: 10px; background: linear-gradient(135deg, var(--accent-soft), var(--surface-2)); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--fg-soft); font-size: .78rem; gap: 6px; }
+  .thumb svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+
+  /* Cartes génériques */
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; box-shadow: var(--shadow); }
+  .sec-lbl { font-size: .74rem; text-transform: uppercase; letter-spacing: .08em; color: var(--fg-soft); font-weight: 600; margin: 22px 0 10px; }
+  .sec-lbl:first-of-type { margin-top: 0; }
+
+  .rowline { display: flex; align-items: center; gap: 13px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+  .rowline:last-child { border-bottom: none; }
+  .rowline .ri { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; }
+  .rowline .ri svg { width: 19px; height: 19px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .rowline .rt { flex: 1; min-width: 0; }
+  .rowline .rt b { font-family: var(--font-head); font-weight: 600; font-size: .96rem; display: block; }
+  .rowline .rt span { font-size: .8rem; color: var(--fg-soft); }
+
+  /* Interrupteur */
+  .toggle { flex: 0 0 auto; width: 48px; height: 28px; border-radius: 999px; border: none; background: var(--line); cursor: pointer; position: relative; transition: background .18s; }
+  .toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: transform .18s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+  .toggle[aria-pressed="true"] { background: var(--accent); }
+  .toggle[aria-pressed="true"]::after { transform: translateX(20px); }
+
+  .seg { display: flex; gap: 8px; margin-bottom: 14px; }
+  .seg button { flex: 1; font-family: var(--font-head); font-weight: 600; font-size: .85rem; padding: 10px 6px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--fg-soft); cursor: pointer; }
+  .seg button.sel { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  .recap { display: flex; flex-direction: column; gap: 10px; }
+  .recap .rtot { display: flex; align-items: baseline; gap: 8px; }
+  .recap .rtot b { font-family: var(--font-head); font-size: 1.6rem; font-weight: 700; }
+  .recap .rtot span { color: var(--fg-soft); font-size: .8rem; }
+  .sealbox { display: flex; align-items: center; gap: 10px; background: var(--accent-soft); color: var(--accent); border-radius: 12px; padding: 12px 14px; font-size: .86rem; font-weight: 600; }
+  .sealbox svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; flex: 0 0 auto; }
+
+  .btn { width: 100%; font-family: var(--font-head); font-weight: 600; font-size: .95rem; padding: 15px; border-radius: 14px; background: var(--accent); color: var(--accent-ink); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 9px; box-shadow: var(--shadow); }
+  .btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .btn.ghost { background: var(--surface); color: var(--fg); border: 1px solid var(--line); }
+  .btn.danger { background: var(--surface); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 40%, var(--line)); }
+  .stack { display: flex; flex-direction: column; gap: 10px; }
+  .hint { text-align: center; font-size: .78rem; color: var(--fg-soft); margin-top: 12px; }
+  .addrow { color: var(--accent); font-weight: 600; font-size: .86rem; }
+
+  .nav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+    height: calc(var(--navh) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px);
+    display: flex; background: color-mix(in srgb, var(--surface) 90%, transparent);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line);
+  }
+  .nav button { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; background: none; border: none; cursor: pointer; color: var(--fg-soft); font-family: var(--font-head); font-size: .66rem; font-weight: 600; }
+  .nav button svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  .nav button[aria-current="true"] { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 10px; }
+
+  /* --- Enrichissements --- */
+  .fab { position: fixed; z-index: 15; right: max(16px, env(safe-area-inset-right,0px)); bottom: calc(var(--navh) + env(safe-area-inset-bottom,0px) + 14px); display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-head); font-weight: 700; font-size: .9rem; padding: 13px 18px; border-radius: 999px; border: none; cursor: pointer; background: var(--gold); color: #1a1205; box-shadow: 0 6px 20px rgba(0,0,0,.28); }
+  .fab svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .fab[hidden] { display: none; }
+
+  .alert-sensitive { display: flex; align-items: center; gap: 10px; background: color-mix(in srgb, var(--gold) 18%, var(--surface)); border: 1px solid color-mix(in srgb, var(--gold) 45%, var(--line)); border-radius: 14px; padding: 12px 14px; margin-bottom: 16px; font-size: .86rem; font-weight: 600; color: var(--gold); }
+  .alert-sensitive .d { width: 9px; height: 9px; border-radius: 50%; background: var(--gold); animation: pulse 2s infinite; flex: 0 0 auto; }
+  .alert-sensitive button { margin-left: auto; background: var(--gold); color: #1a1205; border: none; border-radius: 999px; padding: 7px 13px; font-family: var(--font-head); font-weight: 700; font-size: .78rem; cursor: pointer; }
+
+  .overlay { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.5); display: flex; align-items: flex-end; }
+  .overlay[hidden] { display: none; }
+  .sheet { background: var(--surface); width: 100%; max-width: var(--maxw); margin: 0 auto; border-radius: 22px 22px 0 0; padding: 16px 18px calc(20px + env(safe-area-inset-bottom,0px)); }
+  .grab { width: 40px; height: 4px; border-radius: 2px; background: var(--line); margin: 0 auto 16px; }
+  .sheet h2 { font-size: 1.3rem; margin: 0 0 4px; }
+  .sheet .sub { color: var(--fg-soft); font-size: .9rem; margin: 0 0 14px; }
+  .opt { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--surface-2); border: 1px solid var(--line); border-radius: 13px; padding: 13px 14px; margin-bottom: 9px; cursor: pointer; color: inherit; font: inherit; }
+  .opt .oi { width: 34px; height: 34px; border-radius: 9px; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+  .opt .oi svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .opt b { font-family: var(--font-head); font-weight: 600; font-size: .92rem; }
+
+  .minimap { height: 118px; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); margin-bottom: 12px; }
+  .minimap svg { width: 100%; height: 100%; display: block; }
+
+  .onb { position: fixed; inset: 0; z-index: 50; background: var(--bg); display: flex; flex-direction: column; justify-content: center; padding: 30px max(24px, env(safe-area-inset-left,0px)) calc(30px + env(safe-area-inset-bottom,0px)); }
+  .onb[hidden] { display: none; }
+  .onb .ologo { width: 72px; height: 72px; border-radius: 20px; background: linear-gradient(135deg, #12b39f, #077a6c); display: flex; align-items: center; justify-content: center; margin-bottom: 22px; }
+  .onb .ologo svg { width: 40px; height: 40px; stroke: #fff; fill: none; stroke-width: 2; stroke-linejoin: round; }
+  .onb h2 { font-size: 1.9rem; margin: 0 0 18px; }
+  .onb .pt { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 14px; }
+  .onb .pt .c { color: var(--accent); flex: 0 0 auto; margin-top: 2px; }
+  .onb .pt .c svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .onb .pt b { font-family: var(--font-head); display: block; }
+  .onb .pt span { color: var(--fg-soft); font-size: .9rem; }
+  .onb .cta { margin-top: 22px; display: flex; flex-direction: column; gap: 10px; }
+
+  /* --- Écrans plein écran (détail, compte, résumé) --- */
+  .screen { position: fixed; inset: 0; z-index: 45; background: var(--bg); overflow-y: auto; }
+  .screen[hidden] { display: none !important; }
+  .screen-top { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px; padding: 14px max(16px, env(safe-area-inset-left,0px)); padding-top: calc(14px + env(safe-area-inset-top,0px)); background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+  .screen-top .back { width: 38px; height: 38px; border-radius: 11px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font-size: 1.3rem; line-height: 1; cursor: pointer; flex: 0 0 auto; }
+  .screen-top h2 { font-size: 1.1rem; margin: 0; }
+  .screen-body { padding: 18px max(16px, env(safe-area-inset-left,0px)) calc(40px + env(safe-area-inset-bottom,0px)); display: flex; flex-direction: column; gap: 16px; max-width: var(--maxw); margin: 0 auto; }
+  .bigmap { height: 190px; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow); }
+  .bigmap svg { width: 100%; height: 100%; display: block; }
+  .det-head { display: flex; align-items: center; gap: 13px; }
+  .det-head .ev-ico { width: 46px; height: 46px; }
+  .det-head .tt b { font-family: var(--font-head); font-size: 1.2rem; display: block; }
+  .det-head .tt span { color: var(--fg-soft); font-size: .86rem; }
+  .det-rows { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 2px 14px; box-shadow: var(--shadow); }
+  .det-rows .row { display: flex; justify-content: space-between; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: .9rem; color: var(--fg-soft); }
+  .det-rows .row:last-child { border-bottom: none; }
+  .det-rows .row b { color: var(--fg); font-family: var(--font-head); font-weight: 500; }
+  .det-rows .hash b { font-family: ui-monospace, monospace; font-weight: 400; font-size: .82rem; }
+  .acc-logo { width: 64px; height: 64px; border-radius: 18px; background: linear-gradient(135deg, #12b39f, #077a6c); display: flex; align-items: center; justify-content: center; margin: 6px auto 4px; }
+  .acc-logo svg { width: 34px; height: 34px; stroke: #fff; fill: none; stroke-width: 2; stroke-linejoin: round; }
+  .acc-field { display: flex; flex-direction: column; gap: 6px; }
+  .acc-field label { font-size: .8rem; color: var(--fg-soft); font-weight: 600; }
+  .acc-field input { font: inherit; font-size: 1rem; padding: 13px 15px; border-radius: 13px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); }
+  .sum-hero { text-align: center; padding: 8px 0 2px; }
+  .sum-hero .ic { width: 60px; height: 60px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+  .sum-hero .ic svg { width: 30px; height: 30px; stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  .sum-hero h2 { margin: 0 0 4px; }
+  .sum-hero p { color: var(--fg-soft); font-size: .92rem; margin: 0; }
+
+  /* --- Historique / calendrier --- */
+  .cal { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px; box-shadow: var(--shadow); margin-bottom: 18px; }
+  .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .cal-head b { font-family: var(--font-head); font-weight: 600; font-size: 1.02rem; text-transform: capitalize; }
+  .cal-head button { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface-2); color: var(--fg-soft); cursor: pointer; font-size: 1rem; }
+  .cal-dow { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; margin-bottom: 6px; }
+  .cal-dow span { text-align: center; font-size: .64rem; font-weight: 600; color: var(--fg-soft); text-transform: uppercase; letter-spacing: .04em; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; }
+  .cal-cell { aspect-ratio: 1; border: none; background: none; border-radius: 10px; cursor: pointer; font-family: var(--font-head); font-weight: 500; font-size: .85rem; color: var(--fg); position: relative; display: flex; align-items: center; justify-content: center; }
+  .cal-cell.empty { visibility: hidden; cursor: default; }
+  .cal-cell.future { color: var(--fg-soft); opacity: .38; cursor: default; }
+  .cal-cell.has::after { content: ""; position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+  .cal-cell.today { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+  .cal-legend { display: flex; align-items: center; gap: 7px; justify-content: center; margin-top: 13px; font-size: .74rem; color: var(--fg-soft); }
+  .cal-legend .d { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
+  /* --- Dossier de preuve --- */
+  .doc { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; }
+  .doc-cover { background: linear-gradient(135deg, var(--accent), #077a6c); color: #fff; padding: 22px 20px; }
+  .doc-cover .k { font-size: .7rem; text-transform: uppercase; letter-spacing: .12em; opacity: .85; font-weight: 600; }
+  .doc-cover h3 { font-family: var(--font-head); font-size: 1.4rem; margin: 7px 0 3px; }
+  .doc-cover p { margin: 0; font-size: .85rem; opacity: .92; }
+  .doc-sec { padding: 15px 18px; border-top: 1px solid var(--line); }
+  .doc-sec h4 { font-family: var(--font-head); font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-soft); margin: 0 0 10px; }
+  .doc-kv { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; font-size: .88rem; color: var(--fg-soft); }
+  .doc-kv b { font-family: var(--font-head); font-weight: 500; color: var(--fg); }
+  .doc-chrono { display: flex; flex-direction: column; gap: 9px; }
+  .doc-chrono .ln { display: flex; gap: 10px; font-size: .86rem; }
+  .doc-chrono .ln .t { font-family: var(--font-head); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--accent); flex: 0 0 48px; }
+  .doc-chrono .ln .x { color: var(--fg); }
+  .verif { display: flex; gap: 14px; align-items: center; }
+  .verif .qr { width: 70px; height: 70px; flex: 0 0 auto; border-radius: 10px; border: 1px solid var(--line); background: #fff; padding: 6px; }
+  .verif .qr svg { width: 100%; height: 100%; display: block; }
+  .verif .vt b { font-family: var(--font-head); font-weight: 600; display: block; font-size: .9rem; }
+  .verif .vt span { font-size: .8rem; color: var(--fg-soft); }
+  .verif .vt .code { font-family: ui-monospace, monospace; font-size: .82rem; color: var(--accent); margin-top: 4px; word-break: break-all; }
+
+  /* --- Intégrité --- */
+  .istep { display: flex; gap: 13px; align-items: flex-start; }
+  .istep .n { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 9px; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; font-family: var(--font-head); font-weight: 700; font-size: .9rem; }
+  .istep b { font-family: var(--font-head); font-weight: 600; display: block; margin-bottom: 2px; }
+  .istep span { font-size: .86rem; color: var(--fg-soft); }
+  .chain { display: flex; flex-direction: column; align-items: stretch; }
+  .chain .blk { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; font-family: ui-monospace, monospace; font-size: .74rem; color: var(--fg-soft); }
+  .chain .blk b { color: var(--fg); font-weight: 600; }
+  .chain .lnk { width: 2px; height: 13px; background: var(--accent); margin: 0 auto; opacity: .5; }
+
+  /* --- Contacts de confiance --- */
+  .avatar { width: 42px; height: 42px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; font-family: var(--font-head); font-weight: 700; font-size: .98rem; flex: 0 0 auto; }
+  .perm { display: flex; align-items: center; gap: 5px; font-size: .74rem; color: var(--fg-soft); margin-top: 4px; }
+  .perm svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .cta-alert { background: var(--danger); color: #fff; border: none; }
+  .cta-alert svg { stroke: #fff; }
+</style>
+
+
+<style>
+  html { -webkit-text-size-adjust: 100%; background: var(--bg); padding: env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px); }
+  body { margin: 0; }
+  [hidden] { display: none !important; }
+  img { max-width: 100%; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="demo"><b>Maquette</b> · prototype navigable avec des données d'exemple</div>
+
+  <div class="top">
+    <div class="brand">
+      <span class="logo"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/></svg></span>
+      Témoin
+    </div>
+    <span class="status" id="statusPill"><span class="dot-live"></span>Suivi actif</span>
+  </div>
+
+  <!-- ===== JOURNÉE ===== -->
+  <section class="panel" id="scr-day">
+    <div class="datebar">
+      <button type="button" aria-label="Jour précédent">‹</button>
+      <span class="dstr">aujourd'hui</span>
+      <button type="button" aria-label="Jour suivant">›</button>
+    </div>
+    <div class="summary">
+      <div class="sum"><div class="v">9 h 10</div><div class="k">Domicile</div></div>
+      <div class="sum"><div class="v">1 h 05</div><div class="k">Trajets</div></div>
+      <div class="sum"><div class="v">6</div><div class="k">Lieux</div></div>
+    </div>
+    <div class="timeline">
+      <div class="ev now">
+        <button class="ev-card" type="button">
+          <div class="ev-top">
+            <span class="ev-ico"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"/><path d="M6 10v9h12v-9"/></svg></span>
+            <div class="ev-main"><div class="ev-title">Domicile</div><div class="ev-sub">En cours · Wi-Fi « Livebox-Jerem »</div></div>
+            <div class="ev-right"><div class="ev-time">13:40 →</div><div class="ev-dur">maintenant</div></div>
+          </div>
+          <span class="seal"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Scellé en continu</span>
+          <div class="ev-detail">
+            <div class="row"><span>Position</span><b>48.8769, 2.3378</b></div>
+            <div class="row"><span>Précision</span><b>± 8 m</b></div>
+            <div class="row"><span>Dernière empreinte</span><b>14:02:11</b></div>
+            <div class="row hash"><span>Sceau</span><b>a1f9…c73e</b></div>
+          </div>
+        </button>
+      </div>
+      <div class="ev">
+        <button class="ev-card" type="button">
+          <div class="ev-top">
+            <span class="ev-ico"><svg viewBox="0 0 24 24"><path d="M3 4h12a5 5 0 0 1 0 10H8"/><path d="M7 14l-3 3 3 3"/><path d="M18 4v4"/></svg></span>
+            <div class="ev-main"><div class="ev-title">Déjeuner</div><div class="ev-sub">Restaurant · 2e arrondissement</div></div>
+            <div class="ev-right"><div class="ev-time">12:45</div><div class="ev-dur">55 min</div></div>
+          </div>
+          <span class="seal"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Scellé · photo</span>
+          <div class="ev-detail">
+            <div class="thumb"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/></svg>Photo horodatée 12:51</div>
+            <div class="row" style="margin-top:10px"><span>Position</span><b>48.8671, 2.3431</b></div>
+            <div class="row hash"><span>Sceau</span><b>7b02…9d14</b></div>
+          </div>
+        </button>
+      </div>
+      <div class="ev">
+        <button class="ev-card" type="button">
+          <div class="ev-top">
+            <span class="ev-ico"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="16" rx="3"/><path d="M9 19l-1 2M15 19l1 2M9 8h6"/></svg></span>
+            <div class="ev-main"><div class="ev-title">Trajet · Ligne 8</div><div class="ev-sub">Opéra → Grands Boulevards</div></div>
+            <div class="ev-right"><div class="ev-time">12:20</div><div class="ev-dur">25 min</div></div>
+          </div>
+          <span class="seal"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Scellé en continu</span>
+          <div class="ev-detail">
+            <div class="row"><span>Mode détecté</span><b>Transport</b></div>
+            <div class="row"><span>Points enregistrés</span><b>14</b></div>
+            <div class="row hash"><span>Sceau</span><b>c5aa…1f80</b></div>
+          </div>
+        </button>
+      </div>
+      <div class="ev">
+        <button class="ev-card" type="button">
+          <div class="ev-top">
+            <span class="ev-ico"><svg viewBox="0 0 24 24"><path d="M6 8v8M4 10v4M18 8v8M20 10v4M7 12h10"/></svg></span>
+            <div class="ev-main"><div class="ev-title">Salle de sport</div><div class="ev-sub">Séance · ~1 h 20</div></div>
+            <div class="ev-right"><div class="ev-time">10:55</div><div class="ev-dur">1 h 25</div></div>
+          </div>
+          <span class="seal"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Scellé en continu</span>
+          <div class="ev-detail">
+            <div class="row"><span>Position</span><b>48.8712, 2.3290</b></div>
+            <div class="row"><span>Lieu connu</span><b>Oui</b></div>
+            <div class="row hash"><span>Sceau</span><b>e30d…44b2</b></div>
+          </div>
+        </button>
+      </div>
+      <div class="ev">
+        <button class="ev-card" type="button">
+          <div class="ev-top">
+            <span class="ev-ico"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="16" rx="3"/><path d="M9 19l-1 2M15 19l1 2M9 8h6"/></svg></span>
+            <div class="ev-main"><div class="ev-title">Trajet · Ligne 9</div><div class="ev-sub">Domicile → centre</div></div>
+            <div class="ev-right"><div class="ev-time">10:30</div><div class="ev-dur">25 min</div></div>
+          </div>
+          <span class="seal"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Scellé en continu</span>
+          <div class="ev-detail">
+            <div class="row"><span>Points enregistrés</span><b>12</b></div>
+            <div class="row hash"><span>Sceau</span><b>2fa7…88c1</b></div>
+          </div>
+        </button>
+      </div>
+      <div class="ev">
+        <button class="ev-card" type="button">
+          <div class="ev-top">
+            <span class="ev-ico"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"/><path d="M6 10v9h12v-9"/></svg></span>
+            <div class="ev-main"><div class="ev-title">Domicile</div><div class="ev-sub">Nuit · Wi-Fi « Livebox-Jerem »</div></div>
+            <div class="ev-right"><div class="ev-time">23:10</div><div class="ev-dur">11 h 20</div></div>
+          </div>
+          <span class="seal"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Scellé en continu</span>
+          <div class="ev-detail">
+            <div class="row"><span>Position</span><b>48.8769, 2.3378</b></div>
+            <div class="row"><span>Empreintes la nuit</span><b>136</b></div>
+            <div class="row hash"><span>Sceau</span><b>9c41…0ab7</b></div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== HISTORIQUE ===== -->
+  <section class="panel" id="scr-hist" hidden>
+    <h1 class="panel-title">Historique</h1>
+    <div class="cal">
+      <div class="cal-head">
+        <button type="button" id="calPrev" aria-label="Mois précédent">‹</button>
+        <b id="calLabel">—</b>
+        <button type="button" id="calNext" aria-label="Mois suivant">›</button>
+      </div>
+      <div class="cal-dow"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-legend"><span class="d"></span> Jour avec présence enregistrée · touchez un jour pour l'ouvrir</div>
+    </div>
+    <div class="sec-lbl">Jours récents</div>
+    <div class="card" id="histList" style="padding:4px 16px"></div>
+  </section>
+
+  <!-- ===== EXPORT ===== -->
+  <section class="panel" id="scr-export" hidden>
+    <h1 class="panel-title">Exporter &amp; partager</h1>
+    <div class="seg" id="expSeg">
+      <button type="button" class="sel" data-p="Aujourd'hui">Aujourd'hui</button>
+      <button type="button" data-p="7 derniers jours">7 jours</button>
+      <button type="button" data-p="Personnalisé">Période</button>
+    </div>
+    <div class="card recap">
+      <div class="rtot"><b id="recapTitle">Aujourd'hui</b><span>14 novembre 2026</span></div>
+      <div class="rowline" style="border:none;padding:4px 0"><div class="rt"><span>6 lieux · 3 trajets · 1 photo · 23 empreintes scellées</span></div></div>
+      <div class="sealbox"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Intégrité vérifiée — aucune donnée modifiée</div>
+    </div>
+    <div class="stack" style="margin-top:16px">
+      <button class="btn" type="button" id="pdfBtn"><svg viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4"/><path d="M5 21h14"/></svg>Générer le PDF scellé</button>
+      <button class="btn ghost" type="button" id="shareBtn"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>Partager à un contact de confiance</button>
+    </div>
+    <p class="hint" id="expHint">Le récapitulatif inclut les sceaux : le destinataire peut vérifier que rien n'a été modifié.</p>
+  </section>
+
+  <!-- ===== RÉGLAGES ===== -->
+  <section class="panel" id="scr-set" hidden>
+    <h1 class="panel-title">Réglages</h1>
+
+    <div class="sec-lbl">Suivi</div>
+    <div class="card">
+      <div class="rowline">
+        <span class="ri"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></span>
+        <div class="rt"><b>Suivi en arrière-plan</b><span>Enregistrement continu de la présence</span></div>
+        <button class="toggle" type="button" aria-pressed="true" data-k="suivi" aria-label="Suivi en arrière-plan"></button>
+      </div>
+      <div class="rowline">
+        <span class="ri"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="16" height="10" rx="2"/><path d="M22 10v4"/></svg></span>
+        <div class="rt"><b>Économie de batterie</b><span>Moins de points, autonomie prolongée</span></div>
+        <button class="toggle" type="button" aria-pressed="false" data-k="batt" aria-label="Économie de batterie"></button>
+      </div>
+    </div>
+
+    <div class="sec-lbl">Lieux connus</div>
+    <div class="card">
+      <div class="rowline"><span class="ri"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"/><path d="M6 10v9h12v-9"/></svg></span><div class="rt"><b>Domicile</b><span>Reconnu par Wi-Fi</span></div></div>
+      <div class="rowline"><span class="ri"><svg viewBox="0 0 24 24"><path d="M6 8v8M4 10v4M18 8v8M20 10v4M7 12h10"/></svg></span><div class="rt"><b>Salle de sport</b><span>Reconnu par position</span></div></div>
+      <div class="rowline"><span class="ri"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><div class="rt"><span class="addrow">Ajouter un lieu</span></div></div>
+    </div>
+
+    <div class="sec-lbl">Confidentialité &amp; sécurité</div>
+    <div class="card">
+      <div class="rowline">
+        <span class="ri"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>
+        <div class="rt"><b>Verrouillage biométrique</b><span>Vous seul ouvrez l'app</span></div>
+        <button class="toggle" type="button" aria-pressed="true" data-k="bio" aria-label="Verrouillage biométrique"></button>
+      </div>
+      <div class="rowline">
+        <span class="ri"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+        <div class="rt"><b>Chiffrement des données</b><span>Activé · données illisibles sans vous</span></div>
+      </div>
+      <div class="rowline">
+        <span class="ri"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 12h6"/></svg></span>
+        <div class="rt"><b>Stockage</b><span>Les données restent sur cet appareil</span></div>
+      </div>
+      <button class="rowline" id="integrityRow" type="button" style="width:100%;background:none;border:none;border-bottom:none;cursor:pointer;text-align:left;padding:13px 0 4px">
+        <span class="ri"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+        <div class="rt"><b>Comment c'est infalsifiable</b><span>Horodatage, scellé et signature expliqués</span></div>
+        <span style="color:var(--fg-soft);font-size:1.2rem;margin-left:auto">›</span>
+      </button>
+    </div>
+
+    <div class="sec-lbl">Mes données</div>
+    <div class="stack">
+      <button class="btn ghost" type="button"><svg viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4"/><path d="M5 21h14"/></svg>Exporter toutes mes données</button>
+      <button class="btn danger" type="button"><svg viewBox="0 0 24 24"><path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13"/></svg>Supprimer une période</button>
+    </div>
+
+    <div class="sec-lbl">Contacts de confiance</div>
+    <div class="card">
+      <button class="rowline" id="contactsRow" type="button" style="width:100%;background:none;border:none;border-bottom:none;cursor:pointer;text-align:left;padding:4px 0">
+        <span class="ri"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 20a7 7 0 0 1 14 0"/><path d="M16 4a4 4 0 0 1 0 8M18 20a6 6 0 0 0-3-5"/></svg></span>
+        <div class="rt"><b>2 contacts configurés</b><span>Peuvent recevoir votre position en cas d'alerte</span></div>
+        <span style="color:var(--fg-soft);font-size:1.2rem;margin-left:auto">›</span>
+      </button>
+    </div>
+
+    <div class="sec-lbl">Compte</div>
+    <div class="card">
+      <button class="rowline" id="accountRow" type="button" style="width:100%;background:none;border:none;cursor:pointer;text-align:left;padding:4px 0"><span class="ri"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/></svg></span><div class="rt"><b>Jérémy Diavara</b><span>jeremy.dia09@gmail.com</span></div></button>
+    </div>
+
+    <div class="sec-lbl">À propos</div>
+    <div class="card">
+      <button class="rowline" id="replayOnb" type="button" style="width:100%;background:none;border:none;border-bottom:none;cursor:pointer;text-align:left;padding:4px 0"><span class="ri"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></span><div class="rt"><span class="addrow">Revoir l'introduction</span></div></button>
+    </div>
+  </section>
+
+</div>
+
+<nav class="nav" role="tablist" aria-label="Navigation">
+  <button data-tab="scr-day" aria-current="true"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 9h16M8 3v4M16 3v4"/></svg>Journée</button>
+  <button data-tab="scr-hist"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 14h2M14 14h2M8 18h2M14 18h2"/></svg>Historique</button>
+  <button data-tab="scr-export"><svg viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4"/><path d="M5 21h14"/></svg>Export</button>
+  <button data-tab="scr-set"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.6-2-3.4-2.3 1a7 7 0 0 0-1.7-1l-.3-2.5h-4l-.3 2.5a7 7 0 0 0-1.7 1l-2.3-1-2 3.4 2 1.6a7 7 0 0 0 0 2l-2 1.6 2 3.4 2.3-1a7 7 0 0 0 1.7 1l.3 2.5h4l.3-2.5a7 7 0 0 0 1.7-1l2.3 1 2-3.4-2-1.6a7 7 0 0 0 .1-1z"/></svg>Réglages</button>
+</nav>
+
+<button class="fab" id="fab" type="button"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M12 8l-2 4h4l-2 4"/></svg>Moment sensible</button>
+
+<div class="overlay" id="sheetOverlay" hidden>
+  <div class="sheet">
+    <div class="grab"></div>
+    <h2>Moment sensible</h2>
+    <p class="sub">Renforce l'enregistrement pendant ce moment : précision maximale, photo, son, et alerte possible à un proche.</p>
+    <button class="opt" type="button"><span class="oi"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/></svg></span><b>Prendre une photo horodatée</b></button>
+    <button class="opt" type="button"><span class="oi"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4"/></svg></span><b>Enregistrer un son</b></button>
+    <button class="opt" type="button"><span class="oi"><svg viewBox="0 0 24 24"><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span><b>Position précise en continu</b></button>
+    <button class="opt" type="button"><span class="oi"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0M17 11l2 2 3-3"/></svg></span><b>Prévenir mon contact de confiance</b></button>
+    <button class="btn" id="startSensitive" style="margin-top:6px"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/></svg>Démarrer l'enregistrement renforcé</button>
+    <button class="btn ghost" id="closeSheet" style="margin-top:10px">Annuler</button>
+  </div>
+</div>
+
+<div class="onb" id="onb" hidden>
+  <div class="ologo"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/></svg></div>
+  <h2>Bienvenue sur Témoin</h2>
+  <div class="pt"><span class="c"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><div><b>Vos journées, enregistrées</b><span>Où vous êtes, quand — sans y penser.</span></div></div>
+  <div class="pt"><span class="c"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><div><b>Scellé et infalsifiable</b><span>Chaque donnée est horodatée par un tiers.</span></div></div>
+  <div class="pt"><span class="c"><svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="3"/><path d="M11 18h2"/></svg></span><div><b>Vos données restent chez vous</b><span>Chiffrées, sur votre téléphone.</span></div></div>
+  <div class="cta">
+    <button class="btn" id="onbStart"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>Activer le suivi</button>
+    <button class="btn ghost" id="onbLater">Plus tard</button>
+  </div>
+</div>
+
+<div class="screen" id="evDetail" hidden>
+  <div class="screen-top"><button class="back" id="evdBack" aria-label="Retour">‹</button><h2>Détail de l'événement</h2></div>
+  <div class="screen-body">
+    <div class="det-head"><span class="ev-ico" id="evdIco"></span><div class="tt"><b id="evdTitle"></b><span id="evdSub"></span></div></div>
+    <div style="color:var(--fg-soft);font-size:.9rem;font-family:var(--font-head)" id="evdTime"></div>
+    <div class="bigmap"><svg viewBox="0 0 320 190" preserveAspectRatio="none">
+      <rect width="320" height="190" style="fill:var(--surface-2)"/>
+      <path d="M0 55 H320 M0 120 H320 M60 0 V190 M150 0 V190 M240 0 V190" style="stroke:var(--line);stroke-width:8;fill:none"/>
+      <path d="M20 165 L95 165 L95 120 L150 120 L150 70 L255 70" style="fill:none;stroke:var(--accent);stroke-width:6;stroke-linecap:round;stroke-linejoin:round"/>
+      <circle cx="255" cy="70" r="14" style="fill:var(--accent)"/><circle cx="255" cy="70" r="5" style="fill:#fff"/>
+    </svg></div>
+    <span class="seal" id="evdSeal"></span>
+    <div id="evdPhoto" hidden></div>
+    <div class="det-rows" id="evdRows"></div>
+  </div>
+</div>
+
+<div class="screen" id="account" hidden>
+  <div class="screen-top"><button class="back" id="accBack" aria-label="Retour">‹</button><h2>Mon compte</h2></div>
+  <div class="screen-body">
+    <div class="acc-logo"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/></svg></div>
+    <div class="acc-field"><label for="accEmail">E-mail</label><input id="accEmail" type="email" value="jeremy.dia09@gmail.com" readonly></div>
+    <div class="acc-field"><label for="accPwd">Mot de passe</label><input id="accPwd" type="password" value="motdepasse" readonly></div>
+    <button class="btn" type="button">Se connecter</button>
+    <div class="card">
+      <div class="rowline"><span class="ri"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><div class="rt"><b>Verrouillage biométrique</b><span>Activé · Face ID</span></div></div>
+      <div class="rowline"><span class="ri"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span><div class="rt"><b>Données chiffrées</b><span>Sur cet appareil uniquement</span></div></div>
+    </div>
+    <button class="btn danger" type="button"><svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>Se déconnecter</button>
+  </div>
+</div>
+
+<div class="screen" id="sensSummary" hidden>
+  <div class="screen-top"><button class="back" id="sumBack" aria-label="Fermer">‹</button><h2>Moment sensible</h2></div>
+  <div class="screen-body">
+    <div class="sum-hero"><div class="ic"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></div><h2>Moment enregistré</h2><p id="sumDur">Durée : —</p></div>
+    <div class="det-rows">
+      <div class="row"><span>Position précise</span><b>En continu</b></div>
+      <div class="row"><span>Photos</span><b>1</b></div>
+      <div class="row"><span>Son</span><b>0:42</b></div>
+      <div class="row"><span>Empreintes scellées</span><b>18</b></div>
+      <div class="row hash"><span>Sceau</span><b>f71c…28ab</b></div>
+    </div>
+    <div class="sealbox"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Intégrité vérifiée — scellé par un tiers</div>
+    <button class="btn" type="button"><svg viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4"/><path d="M5 21h14"/></svg>Exporter ce moment</button>
+    <button class="btn ghost" type="button"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>Partager à un contact</button>
+    <button class="btn ghost" id="sumClose2" type="button">Fermer</button>
+  </div>
+</div>
+
+<!-- ===== Détail d'une journée passée ===== -->
+<div class="screen" id="dayView" hidden>
+  <div class="screen-top"><button class="back" id="dayBack" aria-label="Retour">‹</button><h2 id="dayTitle">Journée</h2></div>
+  <div class="screen-body">
+    <div class="summary" id="daySummary"></div>
+    <div class="timeline" id="dayTimeline"></div>
+    <div class="sealbox"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Intégrité vérifiée — aucune donnée modifiée</div>
+    <button class="btn" type="button" id="dayDossier"><svg viewBox="0 0 24 24"><path d="M14 3v5h5"/><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M9 13h6M9 17h4"/></svg>Générer le dossier de ce jour</button>
+  </div>
+</div>
+
+<!-- ===== Dossier de preuve ===== -->
+<div class="screen" id="proofDossier" hidden>
+  <div class="screen-top"><button class="back" id="docBack" aria-label="Retour">‹</button><h2>Dossier de preuve</h2></div>
+  <div class="screen-body">
+    <div class="doc">
+      <div class="doc-cover">
+        <div class="k">Dossier de présence · Témoin</div>
+        <h3 id="docPeriod">—</h3>
+        <p>Document scellé — généré le <span id="docGen">—</span></p>
+      </div>
+      <div class="doc-sec">
+        <h4>Titulaire</h4>
+        <div class="doc-kv"><span>Nom</span><b>Jérémy Diavara</b></div>
+        <div class="doc-kv"><span>Appareil</span><b>iPhone · Témoin</b></div>
+      </div>
+      <div class="doc-sec">
+        <h4>Résumé de la période</h4>
+        <div class="doc-kv"><span>Lieux enregistrés</span><b id="docLieux">—</b></div>
+        <div class="doc-kv"><span>Trajets</span><b id="docTrajets">—</b></div>
+        <div class="doc-kv"><span>Empreintes scellées</span><b id="docSeals">—</b></div>
+      </div>
+      <div class="doc-sec">
+        <h4>Chronologie</h4>
+        <div class="doc-chrono" id="docChrono"></div>
+      </div>
+      <div class="doc-sec">
+        <h4>Vérification d'intégrité</h4>
+        <div class="verif">
+          <div class="qr"><svg viewBox="0 0 29 29" shape-rendering="crispEdges">
+            <rect width="29" height="29" fill="#fff"/>
+            <rect x="0" y="0" width="7" height="7" fill="#000"/><rect x="1" y="1" width="5" height="5" fill="#fff"/><rect x="2" y="2" width="3" height="3" fill="#000"/>
+            <rect x="22" y="0" width="7" height="7" fill="#000"/><rect x="23" y="1" width="5" height="5" fill="#fff"/><rect x="24" y="2" width="3" height="3" fill="#000"/>
+            <rect x="0" y="22" width="7" height="7" fill="#000"/><rect x="1" y="23" width="5" height="5" fill="#fff"/><rect x="2" y="24" width="3" height="3" fill="#000"/>
+            <g fill="#000"><rect x="9" y="2" width="1" height="1"/><rect x="11" y="2" width="1" height="1"/><rect x="13" y="2" width="1" height="1"/><rect x="10" y="4" width="1" height="1"/><rect x="12" y="4" width="1" height="1"/><rect x="9" y="6" width="1" height="1"/><rect x="2" y="9" width="1" height="1"/><rect x="4" y="9" width="1" height="1"/><rect x="6" y="10" width="1" height="1"/><rect x="9" y="9" width="1" height="1"/><rect x="11" y="10" width="1" height="1"/><rect x="13" y="9" width="1" height="1"/><rect x="15" y="11" width="1" height="1"/><rect x="18" y="9" width="1" height="1"/><rect x="20" y="10" width="1" height="1"/><rect x="24" y="12" width="1" height="1"/><rect x="26" y="9" width="1" height="1"/><rect x="9" y="13" width="1" height="1"/><rect x="11" y="13" width="1" height="1"/><rect x="13" y="13" width="1" height="1"/><rect x="2" y="11" width="1" height="1"/><rect x="4" y="13" width="1" height="1"/><rect x="18" y="15" width="1" height="1"/><rect x="20" y="17" width="1" height="1"/><rect x="22" y="16" width="1" height="1"/><rect x="24" y="18" width="1" height="1"/><rect x="26" y="20" width="1" height="1"/><rect x="10" y="18" width="1" height="1"/><rect x="12" y="20" width="1" height="1"/><rect x="14" y="22" width="1" height="1"/><rect x="16" y="24" width="1" height="1"/><rect x="18" y="22" width="1" height="1"/><rect x="20" y="24" width="1" height="1"/><rect x="22" y="22" width="1" height="1"/><rect x="24" y="24" width="1" height="1"/><rect x="26" y="26" width="1" height="1"/></g>
+          </svg></div>
+          <div class="vt"><b>Scellé par horodatage tiers</b><span>Scannez pour vérifier que rien n'a été modifié.</span><div class="code" id="docCode">—</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="stack">
+      <button class="btn" type="button" id="docPdf"><svg viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4"/><path d="M5 21h14"/></svg>Enregistrer le PDF</button>
+      <button class="btn ghost" type="button" id="docShare"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>Envoyer à un contact de confiance</button>
+    </div>
+    <p class="hint" id="docHint">Maquette — l'enregistrement et l'envoi seront actifs dans la vraie application.</p>
+  </div>
+</div>
+
+<!-- ===== Intégrité expliquée ===== -->
+<div class="screen" id="integrity" hidden>
+  <div class="screen-top"><button class="back" id="intBack" aria-label="Retour">‹</button><h2>Infalsifiable, concrètement</h2></div>
+  <div class="screen-body">
+    <div class="sum-hero"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></div><h2>Un journal qu'on ne peut pas trafiquer</h2><p>Chaque moment est verrouillé dès qu'il est enregistré.</p></div>
+    <div class="card stack" style="gap:18px">
+      <div class="istep"><span class="n">1</span><div><b>Horodatage par un tiers</b><span>L'heure vient d'un serveur de temps indépendant, pas de votre téléphone : impossible d'antidater un événement.</span></div></div>
+      <div class="istep"><span class="n">2</span><div><b>Scellé chaîné</b><span>Chaque empreinte contient celle de la précédente. Modifier un moment casse toute la chaîne qui suit.</span></div></div>
+      <div class="istep"><span class="n">3</span><div><b>Signature de l'appareil</b><span>Une clé privée gardée dans l'enclave sécurisée signe chaque sceau. Vous seul pouvez les produire.</span></div></div>
+      <div class="istep"><span class="n">4</span><div><b>Vérifiable par n'importe qui</b><span>Le dossier exporté se recontrôle sans vous — et sans accès à vos données brutes.</span></div></div>
+    </div>
+    <div class="sec-lbl">La chaîne de sceaux</div>
+    <div class="chain">
+      <div class="blk">12:20 · Trajet L8 — <b>c5aa…1f80</b></div>
+      <div class="lnk"></div>
+      <div class="blk">12:45 · Déjeuner — <b>7b02…9d14</b></div>
+      <div class="lnk"></div>
+      <div class="blk">13:40 · Domicile — <b>a1f9…c73e</b></div>
+    </div>
+    <div class="sealbox"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Intégrité vérifiée — 0 anomalie détectée</div>
+    <button class="btn ghost" type="button" id="intVerify"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>Vérifier l'intégrité maintenant</button>
+    <p class="hint" id="intHint">La vérification recalcule toute la chaîne et confirme qu'aucun sceau n'a changé.</p>
+  </div>
+</div>
+
+<!-- ===== Contacts de confiance ===== -->
+<div class="screen" id="contacts" hidden>
+  <div class="screen-top"><button class="back" id="conBack" aria-label="Retour">‹</button><h2>Contacts de confiance</h2></div>
+  <div class="screen-body">
+    <p style="color:var(--fg-soft);font-size:.9rem;margin:0">Ces personnes peuvent recevoir votre position et votre journal récent si vous déclenchez une alerte, ou automatiquement pendant un moment sensible.</p>
+    <div class="card">
+      <div class="rowline"><span class="avatar">CM</span><div class="rt"><b>Camille M.</b><span>Sœur · 06 12 ** ** 34</span><span class="perm"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Position en alerte · Journal 24 h</span></div></div>
+      <div class="rowline"><span class="avatar">TD</span><div class="rt"><b>Thomas D.</b><span>Ami · 06 98 ** ** 76</span><span class="perm"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Position en alerte</span></div></div>
+      <button class="rowline" id="addContact" type="button" style="width:100%;background:none;border:none;border-bottom:none;cursor:pointer;text-align:left;padding:13px 0 4px"><span class="ri"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><div class="rt"><span class="addrow">Ajouter un contact</span></div></button>
+    </div>
+    <div class="sec-lbl">En cas d'urgence</div>
+    <button class="btn cta-alert" type="button" id="alertBtn"><svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>Envoyer une alerte maintenant</button>
+    <p class="hint" id="conHint">Vos contacts recevront un lien sécurisé vers votre position et votre journal des dernières 24 h.</p>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var sensStartTime = 0;
+    var navBtns = Array.prototype.slice.call(document.querySelectorAll('.nav button'));
+    var ids = ['scr-day','scr-hist','scr-export','scr-set'];
+    var panels = {}; ids.forEach(function (i) { panels[i] = document.getElementById(i); });
+    function show(id) {
+      ids.forEach(function (k) { panels[k].hidden = (k !== id); });
+      navBtns.forEach(function (b) { b.setAttribute('aria-current', b.dataset.tab === id ? 'true' : 'false'); });
+      window.scrollTo(0, 0);
+    }
+    navBtns.forEach(function (b) { b.addEventListener('click', function () { show(b.dataset.tab); }); });
+
+    /* (le détail d'un événement s'ouvre en plein écran, géré plus bas) */
+
+    /* Interrupteurs */
+    var statusPill = document.getElementById('statusPill');
+    document.querySelectorAll('.toggle').forEach(function (t) {
+      t.addEventListener('click', function () {
+        var on = t.getAttribute('aria-pressed') !== 'true';
+        t.setAttribute('aria-pressed', on ? 'true' : 'false');
+        if (t.dataset.k === 'suivi') {
+          statusPill.classList.toggle('off', !on);
+          statusPill.innerHTML = '<span class="dot-live"></span>' + (on ? 'Suivi actif' : 'Suivi en pause');
+        }
+      });
+    });
+
+    /* Export */
+    var seg = document.querySelectorAll('#expSeg button'), recapTitle = document.getElementById('recapTitle');
+    seg.forEach(function (b) { b.addEventListener('click', function () {
+      seg.forEach(function (x) { x.classList.remove('sel'); }); b.classList.add('sel'); recapTitle.textContent = b.dataset.p;
+    }); });
+    document.getElementById('pdfBtn').addEventListener('click', function () { openDossier(periodCtx()); });
+    document.getElementById('shareBtn').addEventListener('click', function () { openScreen('contacts'); });
+
+    /* --- Onboarding --- */
+    var onb = document.getElementById('onb');
+    try { if (!localStorage.getItem('temoin_onb')) onb.hidden = false; } catch (e) {}
+    function closeOnb() { onb.hidden = true; try { localStorage.setItem('temoin_onb', '1'); } catch (e) {} }
+    document.getElementById('onbLater').addEventListener('click', closeOnb);
+    document.getElementById('onbStart').addEventListener('click', function () {
+      closeOnb();
+      var t = document.querySelector('.toggle[data-k="suivi"]');
+      if (t && t.getAttribute('aria-pressed') !== 'true') t.click();
+    });
+    var replay = document.getElementById('replayOnb');
+    if (replay) replay.addEventListener('click', function () { onb.hidden = false; window.scrollTo(0, 0); });
+
+    /* --- Bouton "moment sensible" + sheet --- */
+    var fab = document.getElementById('fab'), sheetOverlay = document.getElementById('sheetOverlay');
+    function updFab() { fab.hidden = document.getElementById('scr-day').hidden; }
+    navBtns.forEach(function (b) { b.addEventListener('click', updFab); });
+    updFab();
+    fab.addEventListener('click', function () { sheetOverlay.hidden = false; });
+    document.getElementById('closeSheet').addEventListener('click', function () { sheetOverlay.hidden = true; });
+    sheetOverlay.addEventListener('click', function (e) { if (e.target === sheetOverlay) sheetOverlay.hidden = true; });
+    document.getElementById('startSensitive').addEventListener('click', function () { sheetOverlay.hidden = true; showSensitiveBanner(); });
+    function showSensitiveBanner() {
+      if (document.getElementById('sensBanner')) { show('scr-day'); updFab(); return; }
+      var day = document.getElementById('scr-day');
+      var b = document.createElement('div');
+      b.className = 'alert-sensitive'; b.id = 'sensBanner';
+      b.innerHTML = '<span class="d"></span><span>Moment sensible actif — enregistrement renforcé</span>';
+      sensStartTime = Date.now();
+      var stop = document.createElement('button'); stop.type = 'button'; stop.textContent = 'Arrêter';
+      stop.addEventListener('click', function () { b.remove(); openSensSummary(); });
+      b.appendChild(stop);
+      day.insertBefore(b, day.firstChild);
+      show('scr-day'); updFab();
+    }
+
+    /* --- Détail d'un événement en plein écran --- */
+    var evDetail = document.getElementById('evDetail');
+    function openEvDetail(card) {
+      document.getElementById('evdIco').innerHTML = card.querySelector('.ev-ico').innerHTML;
+      document.getElementById('evdTitle').textContent = card.querySelector('.ev-title').textContent;
+      document.getElementById('evdSub').textContent = card.querySelector('.ev-sub').textContent;
+      document.getElementById('evdTime').textContent = card.querySelector('.ev-time').textContent + ' · ' + card.querySelector('.ev-dur').textContent;
+      var sealEl = card.querySelector('.seal');
+      document.getElementById('evdSeal').textContent = sealEl ? sealEl.textContent.trim() : '';
+      var det = card.querySelector('.ev-detail');
+      var rows = '';
+      if (det) det.querySelectorAll('.row').forEach(function (r) { rows += '<div class="' + r.className + '">' + r.innerHTML + '</div>'; });
+      document.getElementById('evdRows').innerHTML = rows || '<div class="row"><span>Enregistrement</span><b>Scellé en continu</b></div>';
+      var photo = det && det.querySelector('.thumb');
+      var pw = document.getElementById('evdPhoto');
+      pw.innerHTML = photo ? photo.outerHTML : '';
+      pw.hidden = !photo;
+      evDetail.hidden = false; window.scrollTo(0, 0);
+    }
+    document.querySelectorAll('.ev-card').forEach(function (c) {
+      c.addEventListener('click', function () { openEvDetail(c); });
+    });
+    document.getElementById('evdBack').addEventListener('click', function () { evDetail.hidden = true; });
+
+    /* --- Mon compte --- */
+    var accountScreen = document.getElementById('account');
+    var accRow = document.getElementById('accountRow');
+    if (accRow) accRow.addEventListener('click', function () { accountScreen.hidden = false; window.scrollTo(0, 0); });
+    document.getElementById('accBack').addEventListener('click', function () { accountScreen.hidden = true; });
+
+    /* --- Résumé après un moment sensible --- */
+    var sensSummary = document.getElementById('sensSummary');
+    function openSensSummary() {
+      var mins = sensStartTime ? Math.max(1, Math.round((Date.now() - sensStartTime) / 60000)) : 1;
+      document.getElementById('sumDur').textContent = 'Durée : ' + mins + ' min · scellé';
+      sensSummary.hidden = false; window.scrollTo(0, 0);
+    }
+    document.getElementById('sumBack').addEventListener('click', function () { sensSummary.hidden = true; });
+    document.getElementById('sumClose2').addEventListener('click', function () { sensSummary.hidden = true; });
+
+    /* ========= Enrichissements : historique, dossier, intégrité, contacts ========= */
+    var curDossierCtx = null;
+    function openScreen(id) { var el = document.getElementById(id); el.hidden = false; el.scrollTop = 0; window.scrollTo(0, 0); }
+    function closeScreen(id) { document.getElementById(id).hidden = true; }
+    function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+    var EVICONS = {
+      home: '<path d="M4 11l8-7 8 7"/><path d="M6 10v9h12v-9"/>',
+      metro: '<rect x="5" y="3" width="14" height="16" rx="3"/><path d="M9 19l-1 2M15 19l1 2M9 8h6"/>',
+      resto: '<path d="M3 4h12a5 5 0 0 1 0 10H8"/><path d="M7 14l-3 3 3 3"/><path d="M18 4v4"/>',
+      sport: '<path d="M6 8v8M4 10v4M18 8v8M20 10v4M7 12h10"/>',
+      pin: '<path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>'
+    };
+    var SEAL_SVG = '<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+
+    function rngFrom(seed) { var s = seed % 2147483647; if (s <= 0) s += 2147483646; return function () { s = s * 16807 % 2147483647; return (s - 1) / 2147483646; }; }
+    function daySeed(d) { return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); }
+
+    function dayData(d) {
+      var r = rngFrom(daySeed(d));
+      var pool = [
+        { k: 'home', t: 'Domicile', s: 'Nuit · Wi-Fi « Livebox-Jerem »', time: '23:10', dur: '11 h 20' },
+        { k: 'metro', t: 'Trajet · Ligne 9', s: 'Domicile → centre', time: '10:30', dur: '25 min' },
+        { k: 'sport', t: 'Salle de sport', s: 'Séance', time: '10:55', dur: '1 h 20' },
+        { k: 'metro', t: 'Trajet · Ligne 8', s: 'Opéra → Grands Boulevards', time: '12:20', dur: '25 min' },
+        { k: 'resto', t: 'Déjeuner', s: 'Restaurant · 2e arr.', time: '12:45', dur: '55 min' },
+        { k: 'pin', t: 'Rendez-vous', s: 'Café · 9e arr.', time: '15:30', dur: '40 min' },
+        { k: 'metro', t: 'Trajet · Ligne 7', s: 'Centre → domicile', time: '18:20', dur: '30 min' },
+        { k: 'home', t: 'Domicile', s: 'Soirée · Wi-Fi « Livebox-Jerem »', time: '19:00', dur: '—' }
+      ];
+      var evs = pool.filter(function (e) {
+        if (e.t === 'Rendez-vous') return r() > 0.5;
+        if (e.t === 'Salle de sport') return r() > 0.45;
+        return true;
+      });
+      evs.sort(function (a, b) { return a.time < b.time ? 1 : -1; });
+      var lieux = evs.filter(function (e) { return e.k !== 'metro'; }).length;
+      var trajets = evs.filter(function (e) { return e.k === 'metro'; }).length;
+      var homeH = (7 + Math.floor(r() * 4)) + ' h ' + (Math.floor(r() * 6)) + '0';
+      var seals = 16 + Math.floor(r() * 20);
+      return { events: evs, lieux: lieux, trajets: trajets, homeH: homeH, seals: seals };
+    }
+
+    function evCardHTML(e) {
+      return '<div class="ev"><div class="ev-card" style="cursor:default">'
+        + '<div class="ev-top"><span class="ev-ico"><svg viewBox="0 0 24 24">' + EVICONS[e.k] + '</svg></span>'
+        + '<div class="ev-main"><div class="ev-title">' + e.t + '</div><div class="ev-sub">' + e.s + '</div></div>'
+        + '<div class="ev-right"><div class="ev-time">' + e.time + '</div><div class="ev-dur">' + e.dur + '</div></div></div>'
+        + '<span class="seal">' + SEAL_SVG + 'Scellé en continu</span>'
+        + '</div></div>';
+    }
+
+    /* --- Journée passée --- */
+    function openDayView(d) {
+      var dd = dayData(d);
+      var title = cap(d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }));
+      document.getElementById('dayTitle').textContent = title;
+      document.getElementById('daySummary').innerHTML =
+        '<div class="sum"><div class="v">' + dd.homeH + '</div><div class="k">Domicile</div></div>'
+        + '<div class="sum"><div class="v">' + dd.trajets + '</div><div class="k">Trajets</div></div>'
+        + '<div class="sum"><div class="v">' + dd.lieux + '</div><div class="k">Lieux</div></div>';
+      document.getElementById('dayTimeline').innerHTML = dd.events.map(evCardHTML).join('');
+      curDossierCtx = { label: title, dd: dd };
+      openScreen('dayView');
+    }
+
+    /* --- Calendrier --- */
+    var calDate = new Date(); calDate.setDate(1);
+    function buildCal() {
+      var y = calDate.getFullYear(), m = calDate.getMonth();
+      document.getElementById('calLabel').textContent = cap(calDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }));
+      var first = new Date(y, m, 1);
+      var startDow = (first.getDay() + 6) % 7;
+      var daysInMonth = new Date(y, m + 1, 0).getDate();
+      var today = new Date(); today.setHours(0, 0, 0, 0);
+      var html = '';
+      for (var i = 0; i < startDow; i++) html += '<button class="cal-cell empty" tabindex="-1" disabled></button>';
+      for (var day = 1; day <= daysInMonth; day++) {
+        var d = new Date(y, m, day); d.setHours(0, 0, 0, 0);
+        var cls = 'cal-cell', future = d > today, isToday = d.getTime() === today.getTime();
+        if (future) cls += ' future';
+        if (isToday) cls += ' today';
+        if (!future) cls += ' has';
+        html += '<button class="' + cls + '"' + (future ? ' disabled' : ' data-day="' + d.toISOString() + '"') + '>' + day + '</button>';
+      }
+      var grid = document.getElementById('calGrid');
+      grid.innerHTML = html;
+      grid.querySelectorAll('.cal-cell[data-day]').forEach(function (c) {
+        c.addEventListener('click', function () { openDayView(new Date(c.dataset.day)); });
+      });
+    }
+    document.getElementById('calPrev').addEventListener('click', function () { calDate.setMonth(calDate.getMonth() - 1); buildCal(); });
+    document.getElementById('calNext').addEventListener('click', function () { calDate.setMonth(calDate.getMonth() + 1); buildCal(); });
+    buildCal();
+
+    /* --- Jours récents --- */
+    (function buildHist() {
+      var today = new Date(); var html = '';
+      for (var i = 0; i < 6; i++) {
+        var d = new Date(); d.setDate(today.getDate() - i); d.setHours(0, 0, 0, 0);
+        var x = dayData(d);
+        var label = i === 0 ? "Aujourd'hui" : cap(d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'short' }));
+        html += '<button class="rowline" data-day="' + d.toISOString() + '" type="button" style="width:100%;background:none;border:none;cursor:pointer;text-align:left">'
+          + '<span class="ri"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 9h16M8 3v4M16 3v4"/></svg></span>'
+          + '<div class="rt"><b>' + label + '</b><span>' + x.lieux + ' lieux · ' + x.trajets + ' trajets · ' + x.seals + ' empreintes</span></div>'
+          + '<span style="color:var(--fg-soft);font-size:1.2rem;margin-left:auto">›</span></button>';
+      }
+      var hl = document.getElementById('histList'); hl.innerHTML = html;
+      hl.querySelectorAll('[data-day]').forEach(function (c) { c.addEventListener('click', function () { openDayView(new Date(c.dataset.day)); }); });
+    })();
+
+    /* --- Dossier de preuve --- */
+    function genCode() { var h = '0123456789ABCDEF'; function b(n) { var o = ''; for (var i = 0; i < n; i++) o += h[Math.floor(Math.random() * 16)]; return o; } return 'TMN-' + b(4) + '-' + b(4) + '-' + b(4); }
+    function periodCtx() {
+      var sel = document.querySelector('#expSeg button.sel');
+      var p = sel ? sel.dataset.p : "Aujourd'hui";
+      var today = new Date();
+      if (p === "Aujourd'hui") return { label: "Aujourd'hui", dd: dayData(today) };
+      var days = p.indexOf('7') >= 0 ? 7 : 30;
+      var agg = { lieux: 0, trajets: 0, seals: 0 };
+      for (var i = 0; i < days; i++) { var d = new Date(today); d.setDate(today.getDate() - i); var x = dayData(d); agg.lieux += x.lieux; agg.trajets += x.trajets; agg.seals += x.seals; }
+      agg.events = dayData(today).events; agg.homeH = '—';
+      return { label: p + (days === 7 ? ' (7 jours)' : ' (30 jours)'), dd: agg };
+    }
+    function openDossier(ctx) {
+      document.getElementById('docPeriod').textContent = ctx.label;
+      var now = new Date();
+      document.getElementById('docGen').textContent = now.toLocaleDateString('fr-FR') + ' à ' + now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      document.getElementById('docLieux').textContent = ctx.dd.lieux;
+      document.getElementById('docTrajets').textContent = ctx.dd.trajets;
+      document.getElementById('docSeals').textContent = ctx.dd.seals;
+      var evs = ctx.dd.events.slice().reverse();
+      document.getElementById('docChrono').innerHTML = evs.map(function (e) { return '<div class="ln"><span class="t">' + e.time + '</span><span class="x">' + e.t + ' — ' + e.s + '</span></div>'; }).join('');
+      document.getElementById('docCode').textContent = genCode();
+      document.getElementById('docHint').textContent = 'Maquette — l\'enregistrement et l\'envoi seront actifs dans la vraie application.';
+      openScreen('proofDossier');
+    }
+    document.getElementById('dayDossier').addEventListener('click', function () { if (curDossierCtx) openDossier(curDossierCtx); });
+    document.getElementById('dayBack').addEventListener('click', function () { closeScreen('dayView'); });
+    document.getElementById('docBack').addEventListener('click', function () { closeScreen('proofDossier'); });
+    document.getElementById('docPdf').addEventListener('click', function () { document.getElementById('docHint').textContent = 'Maquette — le PDF scellé sera enregistré dans vos fichiers dans la vraie application.'; });
+    document.getElementById('docShare').addEventListener('click', function () { closeScreen('proofDossier'); openScreen('contacts'); });
+
+    /* --- Intégrité --- */
+    document.getElementById('integrityRow').addEventListener('click', function () { openScreen('integrity'); });
+    document.getElementById('intBack').addEventListener('click', function () { closeScreen('integrity'); });
+    document.getElementById('intVerify').addEventListener('click', function () { document.getElementById('intHint').textContent = '✓ Vérifié à l\'instant — 0 anomalie. Tous les sceaux concordent.'; });
+
+    /* --- Contacts de confiance --- */
+    document.getElementById('contactsRow').addEventListener('click', function () { openScreen('contacts'); });
+    document.getElementById('conBack').addEventListener('click', function () { closeScreen('contacts'); });
+    document.getElementById('addContact').addEventListener('click', function () { document.getElementById('conHint').textContent = 'Maquette — l\'ajout ouvrira votre répertoire dans la vraie application.'; });
+    document.getElementById('alertBtn').addEventListener('click', function () { document.getElementById('conHint').textContent = 'Maquette — une alerte serait envoyée à Camille M. et Thomas D. avec votre position et votre journal des dernières 24 h.'; });
+  })();
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function(){}); });
+  }
+</script>
+</body>
+</html>
